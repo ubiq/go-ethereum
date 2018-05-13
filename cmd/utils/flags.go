@@ -413,6 +413,32 @@ var (
 		Usage: "Suggested gas price base correction factor (%)",
 		Value: 110,
 	}
+
+	// Watch settins
+	WatchEnabledFlag = cli.BoolFlag{
+		Name:  "watch",
+		Usage: "Enable to watch the client",
+	}
+	WatchListenAddrFlag = cli.StringFlag{
+		Name:  "watchaddr",
+		Usage: "Mongo server listening address",
+		Value: node.DefaultHTTPHost,
+	}
+	WatchPortFlag = cli.IntFlag{
+		Name:  "watchport",
+		Usage: "Mongo server listening port",
+		Value: node.DefaultWatchPort,
+	}
+	WatchDbNameFlag = cli.StringFlag{
+		Name:  "watchdbname",
+		Usage: "Mongo server db name",
+		Value: node.DefaultWatchDbName,
+	}
+	WatchDbCollectionFlag = cli.StringFlag{
+		Name:  "watchdbcollectionname",
+		Usage: "Mongo server collection name",
+		Value: node.DefaultWatchDbCollection,
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
@@ -715,11 +741,11 @@ func MakeNode(ctx *cli.Context, name, gitCommit string) *node.Node {
 
 // RegisterEthService configures eth.Ethereum from command line flags and adds it to the
 // given node.
-func RegisterEthService(ctx *cli.Context, stack *node.Node, extra []byte) {
+func RegisterEthService(c *cli.Context, stack *node.Node, extra []byte) {
 	// Avoid conflicting network flags
 	networks, netFlags := 0, []cli.BoolFlag{DevModeFlag, TestNetFlag}
 	for _, flag := range netFlags {
-		if ctx.GlobalBool(flag.Name) {
+		if c.GlobalBool(flag.Name) {
 			networks++
 		}
 	}
@@ -729,48 +755,48 @@ func RegisterEthService(ctx *cli.Context, stack *node.Node, extra []byte) {
 	ks := stack.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
 
 	ethConf := &eth.Config{
-		Etherbase:               MakeEtherbase(ks, ctx),
-		ChainConfig:             MakeChainConfig(ctx, stack),
+		Etherbase:               MakeEtherbase(ks, c),
+		ChainConfig:             MakeChainConfig(c, stack),
 		FastSync:                false,
-		LightMode:               ctx.GlobalBool(LightModeFlag.Name),
-		LightServ:               ctx.GlobalInt(LightServFlag.Name),
-		LightPeers:              ctx.GlobalInt(LightPeersFlag.Name),
-		MaxPeers:                ctx.GlobalInt(MaxPeersFlag.Name),
-		DatabaseCache:           ctx.GlobalInt(CacheFlag.Name),
+		LightMode:               c.GlobalBool(LightModeFlag.Name),
+		LightServ:               c.GlobalInt(LightServFlag.Name),
+		LightPeers:              c.GlobalInt(LightPeersFlag.Name),
+		MaxPeers:                c.GlobalInt(MaxPeersFlag.Name),
+		DatabaseCache:           c.GlobalInt(CacheFlag.Name),
 		DatabaseHandles:         MakeDatabaseHandles(),
-		NetworkId:               ctx.GlobalInt(NetworkIdFlag.Name),
-		MinerThreads:            ctx.GlobalInt(MinerThreadsFlag.Name),
-		ExtraData:               MakeMinerExtra(extra, ctx),
-		DocRoot:                 ctx.GlobalString(DocRootFlag.Name),
-		GasPrice:                common.String2Big(ctx.GlobalString(GasPriceFlag.Name)),
-		GpoMinGasPrice:          common.String2Big(ctx.GlobalString(GpoMinGasPriceFlag.Name)),
-		GpoMaxGasPrice:          common.String2Big(ctx.GlobalString(GpoMaxGasPriceFlag.Name)),
-		GpoFullBlockRatio:       ctx.GlobalInt(GpoFullBlockRatioFlag.Name),
-		GpobaseStepDown:         ctx.GlobalInt(GpobaseStepDownFlag.Name),
-		GpobaseStepUp:           ctx.GlobalInt(GpobaseStepUpFlag.Name),
-		GpobaseCorrectionFactor: ctx.GlobalInt(GpobaseCorrectionFactorFlag.Name),
-		SolcPath:                ctx.GlobalString(SolcPathFlag.Name),
-		AutoDAG:                 ctx.GlobalBool(AutoDAGFlag.Name) || ctx.GlobalBool(MiningEnabledFlag.Name),
-		EnablePreimageRecording: ctx.GlobalBool(VMEnableDebugFlag.Name),
+		NetworkId:               c.GlobalInt(NetworkIdFlag.Name),
+		MinerThreads:            c.GlobalInt(MinerThreadsFlag.Name),
+		ExtraData:               MakeMinerExtra(extra, c),
+		DocRoot:                 c.GlobalString(DocRootFlag.Name),
+		GasPrice:                common.String2Big(c.GlobalString(GasPriceFlag.Name)),
+		GpoMinGasPrice:          common.String2Big(c.GlobalString(GpoMinGasPriceFlag.Name)),
+		GpoMaxGasPrice:          common.String2Big(c.GlobalString(GpoMaxGasPriceFlag.Name)),
+		GpoFullBlockRatio:       c.GlobalInt(GpoFullBlockRatioFlag.Name),
+		GpobaseStepDown:         c.GlobalInt(GpobaseStepDownFlag.Name),
+		GpobaseStepUp:           c.GlobalInt(GpobaseStepUpFlag.Name),
+		GpobaseCorrectionFactor: c.GlobalInt(GpobaseCorrectionFactorFlag.Name),
+		SolcPath:                c.GlobalString(SolcPathFlag.Name),
+		AutoDAG:                 c.GlobalBool(AutoDAGFlag.Name) || c.GlobalBool(MiningEnabledFlag.Name),
+		EnablePreimageRecording: c.GlobalBool(VMEnableDebugFlag.Name),
 	}
 
 	// Override any default configs in dev mode or the test net
 	switch {
-	case ctx.GlobalBool(TestNetFlag.Name):
-		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
+	case c.GlobalBool(TestNetFlag.Name):
+		if !c.GlobalIsSet(NetworkIdFlag.Name) {
 			ethConf.NetworkId = 9
 		}
 		ethConf.Genesis = core.DefaultTestnetGenesisBlock()
 
-	case ctx.GlobalBool(DevModeFlag.Name):
+	case c.GlobalBool(DevModeFlag.Name):
 		ethConf.Genesis = core.DevGenesisBlock()
-		if !ctx.GlobalIsSet(GasPriceFlag.Name) {
+		if !c.GlobalIsSet(GasPriceFlag.Name) {
 			ethConf.GasPrice = new(big.Int)
 		}
 		ethConf.PowTest = true
 	}
 	// Override any global options pertaining to the Ethereum protocol
-	if gen := ctx.GlobalInt(TrieCacheGenFlag.Name); gen > 0 {
+	if gen := c.GlobalInt(TrieCacheGenFlag.Name); gen > 0 {
 		state.MaxTrieCacheGen = uint16(gen)
 	}
 
@@ -782,7 +808,20 @@ func RegisterEthService(ctx *cli.Context, stack *node.Node, extra []byte) {
 		}
 	} else {
 		if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			fullNode, err := eth.New(ctx, ethConf)
+			var fullNode *eth.Ethereum
+			var err error
+			if c.GlobalBool(WatchEnabledFlag.Name) {
+				spConfig := &core.StateProcessorConfig{
+					WatchEnabled:      c.GlobalBool(WatchEnabledFlag.Name),
+					WatchAddress:      c.GlobalString(WatchListenAddrFlag.Name),
+					WatchPort:         c.GlobalInt(WatchPortFlag.Name),
+					WatchDbName:       c.GlobalString(WatchDbNameFlag.Name),
+					WatchDbCollection: c.GlobalString(WatchDbCollectionFlag.Name),
+				}
+				fullNode, err = eth.New2(ctx, ethConf, spConfig)
+			} else {
+				fullNode, err = eth.New(ctx, ethConf)
+			}
 			if fullNode != nil && ethConf.LightServ > 0 {
 				ls, _ := les.NewLesServer(fullNode, ethConf)
 				fullNode.AddLesServer(ls)
@@ -920,10 +959,27 @@ func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chai
 	if !ctx.GlobalBool(FakePoWFlag.Name) {
 		pow = ethash.New()
 	}
-	chain, err = core.NewBlockChain(chainDb, chainConfig, pow, new(event.TypeMux), vm.Config{EnablePreimageRecording: ctx.GlobalBool(VMEnableDebugFlag.Name)})
+
+	mux := new(event.TypeMux)
+	vmConfig := vm.Config{EnablePreimageRecording: ctx.GlobalBool(VMEnableDebugFlag.Name)}
+
+	if ctx.GlobalBool(WatchEnabledFlag.Name) {
+		spConfig := &core.StateProcessorConfig{
+			WatchEnabled:      ctx.GlobalBool(WatchEnabledFlag.Name),
+			WatchAddress:      ctx.GlobalString(WatchListenAddrFlag.Name),
+			WatchPort:         ctx.GlobalInt(WatchPortFlag.Name),
+			WatchDbName:       ctx.GlobalString(WatchDbNameFlag.Name),
+			WatchDbCollection: ctx.GlobalString(WatchDbCollectionFlag.Name),
+		}
+		chain, err = core.NewBlockChainWithSpConfig(chainDb, chainConfig, pow, mux, vmConfig, spConfig)
+	} else {
+		chain, err = core.NewBlockChain(chainDb, chainConfig, pow, mux, vmConfig)
+	}
+
 	if err != nil {
 		Fatalf("Could not start chainmanager: %v", err)
 	}
+
 	return chain, chainDb
 }
 

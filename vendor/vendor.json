@@ -1,0 +1,37 @@
+{
+	"comment": "",
+	"ignore": "",
+	"package": [
+		{
+			"checksumSHA1": "MBpjEwAA3cBlvVizIpWlYXe0j6g=",
+			"path": "github.com/globalsign/mgo",
+			"revision": "efe0945164a7e582241f37ae8983c075f8f2e870",
+			"revisionTime": "2018-04-24T09:13:48Z"
+		},
+		{
+			"checksumSHA1": "ug+lfhCytG7tdM3PigS2Er0dNQg=",
+			"path": "github.com/globalsign/mgo/bson",
+			"revision": "efe0945164a7e582241f37ae8983c075f8f2e870",
+			"revisionTime": "2018-04-24T09:13:48Z"
+		},
+		{
+			"checksumSHA1": "v+vkHey6KrivVjjvBSG3FTK98hk=",
+			"path": "github.com/globalsign/mgo/internal/json",
+			"revision": "efe0945164a7e582241f37ae8983c075f8f2e870",
+			"revisionTime": "2018-04-24T09:13:48Z"
+		},
+		{
+			"checksumSHA1": "zSNjAU41khuKovmSSkhVqXf5q4A=",
+			"path": "github.com/globalsign/mgo/internal/sasl",
+			"revision": "efe0945164a7e582241f37ae8983c075f8f2e870",
+			"revisionTime": "2018-04-24T09:13:48Z"
+		},
+		{
+			"checksumSHA1": "1LM1tD2hM3dbZ3p63M5Levyf2BY=",
+			"path": "github.com/globalsign/mgo/internal/scram",
+			"revision": "efe0945164a7e582241f37ae8983c075f8f2e870",
+			"revisionTime": "2018-04-24T09:13:48Z"
+		}
+	],
+	"rootPath": "github.com/ubiq/go-ubiq"
+}

@@ -162,9 +162,9 @@ func doInstall(cmdline []string) {
 		var minor int
 		fmt.Sscanf(strings.TrimPrefix(runtime.Version(), "go1."), "%d", &minor)
 
-		if minor < 7 {
+		if minor < 9 {
 			log.Println("You have Go version", runtime.Version())
-			log.Println("go-ethereum requires at least Go version 1.7 and cannot")
+			log.Println("go-ethereum requires at least Go version 1.9 and cannot")
 			log.Println("be compiled with an earlier version. Please upgrade your Go installation.")
 			os.Exit(1)
 		}
@@ -685,7 +685,7 @@ func doWindowsInstaller(cmdline []string) {
 		"/DMAJORVERSION="+version[0],
 		"/DMINORVERSION="+version[1],
 		"/DBUILDVERSION="+version[2],
-		"/DARCH="+*arch,
+		"/DARCH=" + *arch,
 		filepath.Join(*workdir, "gubiq.nsi"),
 	)
 

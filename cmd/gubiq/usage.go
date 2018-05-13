@@ -167,6 +167,16 @@ var AppHelpFlagGroups = []flagGroup{
 		}, debug.Flags...),
 	},
 	{
+		Name: "WATCH",
+		Flags: []cli.Flag{
+			utils.WatchEnabledFlag,
+			utils.WatchListenAddrFlag,
+			utils.WatchPortFlag,
+			utils.WatchDbNameFlag,
+			utils.WatchDbCollectionFlag,
+		},
+	},
+	{
 		Name: "EXPERIMENTAL",
 		Flags: []cli.Flag{
 			utils.WhisperEnabledFlag,

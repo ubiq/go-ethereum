@@ -24,11 +24,14 @@ import (
 )
 
 const (
-	DefaultIPCSocket = "gubiq.ipc"  // Default (relative) name of the IPC RPC socket
-	DefaultHTTPHost  = "localhost" // Default host interface for the HTTP RPC server
-	DefaultHTTPPort  = 8588        // Default TCP port for the HTTP RPC server
-	DefaultWSHost    = "localhost" // Default host interface for the websocket RPC server
-	DefaultWSPort    = 8589        // Default TCP port for the websocket RPC server
+	DefaultIPCSocket         = "gubiq.ipc" // Default (relative) name of the IPC RPC socket
+	DefaultHTTPHost          = "localhost" // Default host interface for the HTTP RPC server
+	DefaultHTTPPort          = 8588        // Default TCP port for the HTTP RPC server
+	DefaultWSHost            = "localhost" // Default host interface for the websocket RPC server
+	DefaultWSPort            = 8589        // Default TCP port for the websocket RPC server
+	DefaultWatchPort         = 27017       // Default Mongo port for Watch command
+	DefaultWatchDbName       = "ubiq"      // Default Mongo DB name
+	DefaultWatchDbCollection = "blocks"    // Default Mongo DB collection to store blocks
 )
 
 // DefaultDataDir is the default data directory to use for the databases and other

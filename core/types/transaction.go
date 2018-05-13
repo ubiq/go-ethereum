@@ -26,7 +26,7 @@ import (
 	"sync/atomic"
 
 	"github.com/ubiq/go-ubiq/common"
-	"github.com/ubiq/go-ubiq/common/hexutil"
+	hexutil "github.com/ubiq/go-ubiq/common/hexutil"
 	"github.com/ubiq/go-ubiq/crypto"
 	"github.com/ubiq/go-ubiq/params"
 	"github.com/ubiq/go-ubiq/rlp"
@@ -55,6 +55,10 @@ type Transaction struct {
 	hash atomic.Value
 	size atomic.Value
 	from atomic.Value
+}
+
+type BlockieTransaction struct {
+	*Transaction
 }
 
 type txdata struct {
@@ -114,6 +118,27 @@ func newTransaction(nonce uint64, to *common.Address, amount, gasLimit, gasPrice
 	}
 
 	return &Transaction{data: d}
+}
+
+func (t *BlockieTransaction) Export() map[string]interface{} {
+	m := make(map[string]interface{})
+
+	m["hash"] = t.Hash().Hex()
+	m["nonce"] = hexutil.Uint64(t.data.AccountNonce).String()
+	m["gasPrice"] = hexutil.Uint64(t.data.Price.Uint64())
+	m["gas"] = hexutil.Uint64(t.data.GasLimit.Uint64())
+	if t.data.Recipient != nil {
+		m["to"] = t.data.Recipient.Hex()
+	} else {
+		m["to"] = nil
+	}
+	m["value"] = t.Value().Uint64()
+	m["input"] = (*hexutil.Bytes)(&t.data.Payload)
+	m["v"] = (*hexutil.Big)(t.data.V).String()
+	m["r"] = (*hexutil.Big)(t.data.R).String()
+	m["s"] = (*hexutil.Big)(t.data.S).String()
+
+	return m
 }
 
 func pickSigner(rules params.Rules) Signer {
@@ -233,6 +258,7 @@ func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.Pri
 func (tx *Transaction) Value() *big.Int    { return new(big.Int).Set(tx.data.Amount) }
 func (tx *Transaction) Nonce() uint64      { return tx.data.AccountNonce }
 func (tx *Transaction) CheckNonce() bool   { return true }
+func (tx *Transaction) From() atomic.Value { return tx.from }
 
 // To returns the recipient address of the transaction.
 // It returns nil if the transaction is a contract creation.

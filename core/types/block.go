@@ -109,6 +109,64 @@ type jsonHeader struct {
 	Nonce       *BlockNonce     `json:"nonce"`
 }
 
+type BlockieHeader struct {
+	*Header
+}
+
+func (h *BlockieHeader) Export() map[string]interface{} {
+	m := make(map[string]interface{})
+
+	m["parentHash"] = h.ParentHash.Hex()
+	m["sha3Uncles "] = h.UncleHash.Hex()
+	m["miner"] = h.ReceiptHash.Hex()
+	m["stateRoot"] = h.Root.Hex()
+	m["transactionsRoot"] = h.TxHash.Hex()
+	m["receiptsRoot"] = h.ReceiptHash.Hex()
+	m["logsBloom"] = hexutil.Bytes(h.Bloom.Bytes()).String()
+	m["difficulty"] = hexutil.Uint64(h.Difficulty.Uint64())
+	m["gasLimit"] = hexutil.Uint64(h.GasLimit.Uint64())
+	m["gasUsed"] = hexutil.Uint64(h.GasUsed.Uint64())
+	m["timestamp"] = hexutil.Uint64(h.Time.Uint64())
+	m["extraData"] = (*hexutil.Bytes)(&h.Extra).String()
+	m["mixHash"] = h.MixDigest.Hex()
+	m["nonce"] = hexutil.Uint64(h.Nonce.Uint64()).String()
+	
+	return m
+}
+
+type Blockie struct {
+	*Block
+}
+
+func (b *Blockie) Export() map[string]interface{} {
+	m := make(map[string]interface{})
+
+	header := &BlockieHeader{b.header}
+
+	uncles := make([]map[string]interface{}, 0)
+	for i := range b.uncles {
+		uncles = append(uncles, (&BlockieHeader{b.uncles[i]}).Export())
+	}
+
+	transactions := make([]*map[string]interface{}, 0)
+
+	for j := range b.transactions {
+		tx := (&BlockieTransaction{b.transactions[j]}).Export()
+		transactions = append(transactions, &tx)
+	}
+
+	m["header"] = header.Export()
+	m["uncles"] = &uncles
+	m["transactions"] = &transactions
+	m["hash"] = &b.hash
+	m["size"] = &b.size
+	m["td"] = &b.td
+	m["receivedAt"] = &b.ReceivedAt
+	m["receivedFrom"] = &b.ReceivedFrom
+
+	return m
+}
+
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding.
 func (h *Header) Hash() common.Hash {
