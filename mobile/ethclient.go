@@ -114,6 +114,11 @@ type NewHeadHandler interface {
 	OnError(failure string)
 }
 
+type NewBlockHandler interface {
+	OnNewBlock(block *Block)
+	OnError(failure string)
+}
+
 // SubscribeNewHead subscribes to notifications about the current blockchain head
 // on the given channel.
 func (ec *EthereumClient) SubscribeNewHead(ctx *Context, handler NewHeadHandler, buffer int) (sub *Subscription, _ error) {
@@ -129,6 +134,29 @@ func (ec *EthereumClient) SubscribeNewHead(ctx *Context, handler NewHeadHandler,
 			select {
 			case header := <-ch:
 				handler.OnNewHead(&Header{header})
+
+			case err := <-rawSub.Err():
+				handler.OnError(err.Error())
+				return
+			}
+		}
+	}()
+	return &Subscription{rawSub}, nil
+}
+
+func (ec *EthereumClient) SubscribeNewBlocks(ctx *Context, handler NewBlockHandler, buffer int) (sub *Subscription, _ error) {
+	// Subscribe to the event internally
+	ch := make(chan *types.Block, buffer)
+	rawSub, err := ec.client.SubscribeNewBlocks(ctx.context, ch)
+	if err != nil {
+		return nil, err
+	}
+	// Start up a dispatcher to feed into the callback
+	go func() {
+		for {
+			select {
+			case block := <-ch:
+				handler.OnNewBlock(&Block{block})
 
 			case err := <-rawSub.Err():
 				handler.OnError(err.Error())

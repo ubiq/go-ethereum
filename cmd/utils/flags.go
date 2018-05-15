@@ -413,32 +413,6 @@ var (
 		Usage: "Suggested gas price base correction factor (%)",
 		Value: 110,
 	}
-
-	// Watch settins
-	WatchEnabledFlag = cli.BoolFlag{
-		Name:  "watch",
-		Usage: "Enable to watch the client",
-	}
-	WatchListenAddrFlag = cli.StringFlag{
-		Name:  "watchaddr",
-		Usage: "Mongo server listening address",
-		Value: node.DefaultHTTPHost,
-	}
-	WatchPortFlag = cli.IntFlag{
-		Name:  "watchport",
-		Usage: "Mongo server listening port",
-		Value: node.DefaultWatchPort,
-	}
-	WatchDbNameFlag = cli.StringFlag{
-		Name:  "watchdbname",
-		Usage: "Mongo server db name",
-		Value: node.DefaultWatchDbName,
-	}
-	WatchDbCollectionFlag = cli.StringFlag{
-		Name:  "watchdbcollectionname",
-		Usage: "Mongo server collection name",
-		Value: node.DefaultWatchDbCollection,
-	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
@@ -808,20 +782,7 @@ func RegisterEthService(c *cli.Context, stack *node.Node, extra []byte) {
 		}
 	} else {
 		if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			var fullNode *eth.Ethereum
-			var err error
-			if c.GlobalBool(WatchEnabledFlag.Name) {
-				spConfig := &core.StateProcessorConfig{
-					WatchEnabled:      c.GlobalBool(WatchEnabledFlag.Name),
-					WatchAddress:      c.GlobalString(WatchListenAddrFlag.Name),
-					WatchPort:         c.GlobalInt(WatchPortFlag.Name),
-					WatchDbName:       c.GlobalString(WatchDbNameFlag.Name),
-					WatchDbCollection: c.GlobalString(WatchDbCollectionFlag.Name),
-				}
-				fullNode, err = eth.New2(ctx, ethConf, spConfig)
-			} else {
-				fullNode, err = eth.New(ctx, ethConf)
-			}
+			fullNode, err := eth.New(ctx, ethConf)
 			if fullNode != nil && ethConf.LightServ > 0 {
 				ls, _ := les.NewLesServer(fullNode, ethConf)
 				fullNode.AddLesServer(ls)
@@ -959,22 +920,7 @@ func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chai
 	if !ctx.GlobalBool(FakePoWFlag.Name) {
 		pow = ethash.New()
 	}
-
-	mux := new(event.TypeMux)
-	vmConfig := vm.Config{EnablePreimageRecording: ctx.GlobalBool(VMEnableDebugFlag.Name)}
-
-	if ctx.GlobalBool(WatchEnabledFlag.Name) {
-		spConfig := &core.StateProcessorConfig{
-			WatchEnabled:      ctx.GlobalBool(WatchEnabledFlag.Name),
-			WatchAddress:      ctx.GlobalString(WatchListenAddrFlag.Name),
-			WatchPort:         ctx.GlobalInt(WatchPortFlag.Name),
-			WatchDbName:       ctx.GlobalString(WatchDbNameFlag.Name),
-			WatchDbCollection: ctx.GlobalString(WatchDbCollectionFlag.Name),
-		}
-		chain, err = core.NewBlockChainWithSpConfig(chainDb, chainConfig, pow, mux, vmConfig, spConfig)
-	} else {
-		chain, err = core.NewBlockChain(chainDb, chainConfig, pow, mux, vmConfig)
-	}
+	chain, err = core.NewBlockChain(chainDb, chainConfig, pow, new(event.TypeMux), vm.Config{EnablePreimageRecording: ctx.GlobalBool(VMEnableDebugFlag.Name)})
 
 	if err != nil {
 		Fatalf("Could not start chainmanager: %v", err)

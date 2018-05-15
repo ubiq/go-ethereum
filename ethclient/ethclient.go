@@ -256,6 +256,10 @@ func (ec *Client) SubscribeNewHead(ctx context.Context, ch chan<- *types.Header)
 	return ec.c.EthSubscribe(ctx, ch, "newHeads", map[string]struct{}{})
 }
 
+func (ec *Client) SubscribeNewBlocks(ctx context.Context, ch chan<- *types.Block) (ethereum.Subscription, error) {
+	return ec.c.EthSubscribe(ctx, ch, "newBlocks", map[string]struct{}{})
+}
+
 // State Access
 
 // BalanceAt returns the wei balance of the given account.

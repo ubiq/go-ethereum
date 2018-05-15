@@ -150,10 +150,6 @@ func (s *Ethereum) AddLesServer(ls LesServer) {
 // New creates a new Ethereum object (including the
 // initialisation of the common Ethereum object)
 func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
-	return New2(ctx, config, nil)
-}
-
-func New2(ctx *node.ServiceContext, config *Config, spConfig *core.StateProcessorConfig) (*Ethereum, error) {
 	chainDb, err := CreateDB(ctx, config, "chaindata")
 	if err != nil {
 		return nil, err
@@ -218,14 +214,7 @@ func New2(ctx *node.ServiceContext, config *Config, spConfig *core.StateProcesso
 
 	glog.V(logger.Info).Infoln("Chain config:", eth.chainConfig)
 
-	vmConfig := vm.Config{EnablePreimageRecording: config.EnablePreimageRecording}
-
-	if spConfig != nil {
-		eth.blockchain, err = core.NewBlockChainWithSpConfig(chainDb, eth.chainConfig, eth.pow, eth.EventMux(), vmConfig, spConfig)
-	} else {
-		eth.blockchain, err = core.NewBlockChain(chainDb, eth.chainConfig, eth.pow, eth.EventMux(), vmConfig)
-	}
-
+	eth.blockchain, err = core.NewBlockChain(chainDb, eth.chainConfig, eth.pow, eth.EventMux(), vm.Config{EnablePreimageRecording: config.EnablePreimageRecording})
 	if err != nil {
 		if err == core.ErrNoGenesis {
 			return nil, fmt.Errorf(`No chain found. Please initialise a new chain using the "init" subcommand.`)

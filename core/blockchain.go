@@ -116,10 +116,6 @@ type BlockChain struct {
 // available in the database. It initialiser the default Ethereum Validator and
 // Processor.
 func NewBlockChain(chainDb ethdb.Database, config *params.ChainConfig, pow pow.PoW, mux *event.TypeMux, vmConfig vm.Config) (*BlockChain, error) {
-	return NewBlockChainWithSpConfig(chainDb, config, pow, mux, vmConfig, nil)
-}
-
-func NewBlockChainWithSpConfig(chainDb ethdb.Database, config *params.ChainConfig, pow pow.PoW, mux *event.TypeMux, vmConfig vm.Config, spConfig *StateProcessorConfig) (*BlockChain, error) {
 	bodyCache, _ := lru.New(bodyCacheLimit)
 	bodyRLPCache, _ := lru.New(bodyCacheLimit)
 	blockCache, _ := lru.New(blockCacheLimit)
@@ -138,7 +134,7 @@ func NewBlockChainWithSpConfig(chainDb ethdb.Database, config *params.ChainConfi
 		vmConfig:     vmConfig,
 	}
 	bc.SetValidator(NewBlockValidator(config, bc, pow))
-	bc.SetProcessor(NewStateProcessor(config, bc, spConfig))
+	bc.SetProcessor(NewStateProcessor(config, bc))
 
 	gv := func() HeaderValidator { return bc.Validator() }
 	var err error

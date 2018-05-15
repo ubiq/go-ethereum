@@ -155,12 +155,12 @@ func (b *Blockie) Export() map[string]interface{} {
 		transactions = append(transactions, &tx)
 	}
 
+	m["number"] = hexutil.Uint64(header.Number.Uint64())
 	m["header"] = header.Export()
 	m["uncles"] = &uncles
 	m["transactions"] = &transactions
-	m["hash"] = &b.hash
-	m["size"] = &b.size
-	m["td"] = &b.td
+	m["hash"] = b.Hash().Hex()
+	m["size"] = b.size
 	m["receivedAt"] = &b.ReceivedAt
 	m["receivedFrom"] = &b.ReceivedFrom
 

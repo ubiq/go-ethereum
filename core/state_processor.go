@@ -28,8 +28,6 @@ import (
 	"github.com/ubiq/go-ubiq/params"
 
 	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
-	"github.com/ubiq/go-ubiq/common/hexutil"
 )
 
 var (
@@ -56,20 +54,7 @@ type StateProcessor struct {
 }
 
 // NewStateProcessor initialises a new StateProcessor.
-func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, spConfig *StateProcessorConfig) *StateProcessor {
-	if spConfig != nil && spConfig.WatchEnabled {
-		session, err := mgo.Dial(spConfig.WatchAddress)
-		if err != nil {
-			panic(err)
-		}
-
-		return &StateProcessor{
-			config:     config,
-			bc:         bc,
-			collection: session.DB(spConfig.WatchDbName).C(spConfig.WatchDbCollection),
-		}
-	}
-
+func NewStateProcessor(config *params.ChainConfig, bc *BlockChain) *StateProcessor {
 	return &StateProcessor{
 		config:     config,
 		bc:         bc,
@@ -90,28 +75,13 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		totalUsedGas = big.NewInt(0)
 		err          error
 		header       = block.Header()
-		uncles       = block.Uncles()
 		transactions = block.Transactions()
-		hash         = block.Hash()
-		size         = block.Size()
 		allLogs      []*types.Log
 		gp           = new(GasPool).AddGas(block.GasLimit())
 	)
 
-	// Process blockie map
-	blockie := make(map[string]interface{})
-	blockieHeader := &types.BlockieHeader{Header: block.Header()}
-	blockieUncles := make([]map[string]interface{}, 0)
-	blockieTransactions := make([]*map[string]interface{}, 0)
-
-	// Iterate over uncles
-	for i := range uncles {
-		blockieUncles = append(blockieUncles, (&types.BlockieHeader{Header: uncles[i]}).Export())
-	}
-
 	// Iterate over and process the individual transactions
 	for i, tx := range transactions {
-		//fmt.Println("tx:", i)
 		statedb.StartRecord(tx.Hash(), block.Hash(), i)
 		receipt, _, err := ApplyTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas, cfg)
 		if err != nil {
@@ -119,24 +89,8 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		}
 		receipts = append(receipts, receipt)
 		allLogs = append(allLogs, receipt.Logs...)
-
-		blockieTx := (&types.BlockieTransaction{Transaction: transactions[i]}).Export()
-		blockieTransactions = append(blockieTransactions, &blockieTx)
 	}
 	AccumulateRewards(statedb, header, block.Uncles())
-
-	blockie["number"] = hexutil.Uint64(header.Number.Uint64())
-	blockie["header"] = blockieHeader.Export()
-	blockie["uncles"] = &blockieUncles
-	blockie["transactions"] = &blockieTransactions
-	blockie["hash"] = hash.Hex()
-	blockie["size"] = size
-	blockie["receivedAt"] = &block.ReceivedAt
-	blockie["receivedFrom"] = &block.ReceivedFrom
-
-	if p.collection != nil {
-		p.collection.Upsert(bson.M{"number": hexutil.Uint64(header.Number.Uint64())}, bson.M{"$set": blockie})
-	}
 
 	return receipts, allLogs, totalUsedGas, err
 }

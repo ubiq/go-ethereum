@@ -30,6 +30,8 @@ import (
 	"github.com/ubiq/go-ubiq/event"
 	"github.com/ubiq/go-ubiq/rpc"
 	"golang.org/x/net/context"
+	"github.com/ubiq/go-ubiq/logger/glog"
+	"github.com/ubiq/go-ubiq/logger"
 )
 
 // Type determines the kind of filter and is used to put the filter in to
@@ -50,6 +52,8 @@ const (
 	PendingTransactionsSubscription
 	// BlocksSubscription queries hashes for blocks that are imported
 	BlocksSubscription
+	// CompleteBlocksSubscription queries for complete block information that are imported
+	CompleteBlocksSubscription
 	// LastSubscription keeps track of the last index
 	LastIndexSubscription
 )
@@ -66,6 +70,7 @@ type subscription struct {
 	logs      chan []*types.Log
 	hashes    chan common.Hash
 	headers   chan *types.Header
+	block     chan *types.Block
 	installed chan struct{} // closed when the filter is installed
 	err       chan error    // closed when the filter is uninstalled
 }
@@ -250,6 +255,25 @@ func (es *EventSystem) SubscribeNewHeads(headers chan *types.Header) *Subscripti
 		logs:      make(chan []*types.Log),
 		hashes:    make(chan common.Hash),
 		headers:   headers,
+		block:     make(chan *types.Block),
+		installed: make(chan struct{}),
+		err:       make(chan error),
+	}
+
+	return es.subscribe(sub)
+}
+
+// SubscribeNewBlocks creates a subscription that writes block that is
+// imported in the chain.
+func (es *EventSystem) SubscribeNewBlocks(block chan *types.Block) *Subscription {
+	sub := &subscription{
+		id:        rpc.NewID(),
+		typ:       CompleteBlocksSubscription,
+		created:   time.Now(),
+		logs:      make(chan []*types.Log),
+		hashes:    make(chan common.Hash),
+		headers:   make(chan *types.Header),
+		block:     block,
 		installed: make(chan struct{}),
 		err:       make(chan error),
 	}
@@ -321,6 +345,13 @@ func (es *EventSystem) broadcast(filters filterIndex, ev *event.TypeMuxEvent) {
 				f.headers <- e.Block.Header()
 			}
 		}
+
+		for _, f := range filters[CompleteBlocksSubscription] {
+			if !es.lightMode { // When the client is in light mode, we don't have complete information about the block, so we ignore it
+				f.block <- e.Block
+			}
+		}
+
 		if es.lightMode && len(filters[LogsSubscription]) > 0 {
 			es.lightFilterNewHead(e.Block.Header(), func(header *types.Header, remove bool) {
 				for _, f := range filters[LogsSubscription] {
@@ -417,6 +448,7 @@ func (es *EventSystem) eventLoop() {
 			} else {
 				index[f.typ][f.id] = f
 			}
+			glog.V(logger.Info).Infof("install being called for %d", f.typ)
 			close(f.installed)
 		case f := <-es.uninstall:
 			if f.typ == MinedAndPendingLogsSubscription {
@@ -426,6 +458,7 @@ func (es *EventSystem) eventLoop() {
 			} else {
 				delete(index[f.typ], f.id)
 			}
+			glog.V(logger.Info).Infof("uninstall being called for %d", f.typ)
 			close(f.err)
 		}
 	}

@@ -148,11 +148,6 @@ func init() {
 		utils.GpobaseStepUpFlag,
 		utils.GpobaseCorrectionFactorFlag,
 		utils.ExtraDataFlag,
-		utils.WatchEnabledFlag,
-		utils.WatchListenAddrFlag,
-		utils.WatchPortFlag,
-		utils.WatchDbNameFlag,
-		utils.WatchDbCollectionFlag,
 	}
 	app.Flags = append(app.Flags, debug.Flags...)
 
