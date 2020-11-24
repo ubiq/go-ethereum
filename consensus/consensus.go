@@ -45,10 +45,6 @@ type ChainHeaderReader interface {
 	// GetHeaderByHash retrieves a block header from the database by its hash.
 	GetHeaderByHash(hash common.Hash) *types.Header
 
-	// CalcPastMedianTime calculates the median time of the previous few blocks
-	// prior to, and including, the passed block node.
-	CalcPastMedianTime(number uint64, parent *types.Header) *big.Int
-
 	// GetBlock retrieves a block from the database by hash and number.
 	GetBlock(hash common.Hash, number uint64) *types.Block
 }

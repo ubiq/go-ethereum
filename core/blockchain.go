@@ -878,14 +878,6 @@ func (bc *BlockChain) HasBlockAndState(hash common.Hash, number uint64) bool {
 	return bc.HasState(block.Root())
 }
 
-// calcPastMedianTime calculates the median time of the previous few blocks
-// prior to, and including, the passed block node.
-//
-// Modified from btcsuite
-func (bc *BlockChain) CalcPastMedianTime(number uint64, parent *types.Header) *big.Int {
-	return bc.hc.CalcPastMedianTime(number, parent)
-}
-
 // GetBlock retrieves a block from the database by hash and number,
 // caching it if found.
 func (bc *BlockChain) GetBlock(hash common.Hash, number uint64) *types.Block {

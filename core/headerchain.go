@@ -23,7 +23,6 @@ import (
 	"math"
 	"math/big"
 	mrand "math/rand"
-	"sort"
 	"sync/atomic"
 	"time"
 
@@ -42,7 +41,6 @@ const (
 	tdCacheLimit     = 1024
 	numberCacheLimit = 2048
 	hashCacheLimit   = 2048
-	medianTimeBlocks = 11
 )
 
 // HeaderChain implements the basic block header chain logic that is shared by
@@ -434,47 +432,6 @@ func (hc *HeaderChain) GetTdByHash(hash common.Hash) *big.Int {
 	return hc.GetTd(hash, *number)
 }
 
-// calcPastMedianTime calculates the median time of the previous few blocks
-// prior to, and including, the passed block node.
-//
-// Modified from btcsuite
-func (hc *HeaderChain) CalcPastMedianTime(number uint64, parent *types.Header) *big.Int {
-
-	// Genesis block.
-	if number == 0 {
-		return big.NewInt(int64(hc.GetHeaderByNumber(0).Time))
-	}
-
-	timestamps := make([]*big.Int, medianTimeBlocks)
-	numNodes := 0
-	limit := uint64(0)
-	if number >= medianTimeBlocks {
-		limit = number - medianTimeBlocks + 1
-	}
-
-	for i := number; i >= limit; i-- {
-		if parent != nil && i == number {
-			timestamps[numNodes] = big.NewInt(int64(parent.Time))
-		} else {
-			header := hc.GetHeaderByNumber(i)
-			timestamps[numNodes] = big.NewInt(int64(header.Time))
-		}
-		numNodes++
-		if i == 0 {
-			break
-		}
-	}
-
-	// Prune the slice to the actual number of available timestamps which
-	// will be fewer than desired near the beginning of the block chain
-	// and sort them.
-	timestamps = timestamps[:numNodes]
-	sort.Sort(BigIntSlice(timestamps))
-
-	medianTimestamp := timestamps[numNodes/2]
-	return medianTimestamp
-}
-
 // WriteTd stores a block's total difficulty into the database, also caching it
 // along the way.
 func (hc *HeaderChain) WriteTd(hash common.Hash, number uint64, td *big.Int) error {
@@ -665,10 +622,3 @@ func (hc *HeaderChain) Engine() consensus.Engine { return hc.engine }
 func (hc *HeaderChain) GetBlock(hash common.Hash, number uint64) *types.Block {
 	return nil
 }
-
-// BigIntSlice attaches the methods of sort.Interface to []*big.Int, sorting in increasing order. (used by CalcPastMedianTime)
-type BigIntSlice []*big.Int
-
-func (s BigIntSlice) Len() int           { return len(s) }
-func (s BigIntSlice) Less(i, j int) bool { return s[i].Cmp(s[j]) < 0 }
-func (s BigIntSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math/big"
 	"runtime"
+	"sort"
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
@@ -38,8 +39,9 @@ import (
 
 // Ubqhash proof-of-work protocol constants.
 var (
-	maxUncles              = 2                // Maximum number of uncles allowed in a single block
-	allowedFutureBlockTime = 15 * time.Second // Max time from current time allowed for blocks, before they're considered future blocks
+	maxUncles                     = 2                // Maximum number of uncles allowed in a single block
+	allowedFutureBlockTime        = 15 * time.Second // Max time from current time allowed for blocks, before they're considered future blocks
+	medianTimeBlocks       uint64 = 11
 )
 
 // Diff algo constants.
@@ -345,6 +347,47 @@ func maxActualTimespan(config *diffConfig, dampen bool) *big.Int {
 	return z
 }
 
+// CalcPastMedianTime calculates the median time of the previous few blocks
+// prior to, and including, the passed block node.
+//
+// Modified from btcsuite
+func CalcPastMedianTime(chain consensus.ChainHeaderReader, number uint64, parent *types.Header) *big.Int {
+
+	// Genesis block.
+	if number == 0 {
+		return big.NewInt(int64(chain.GetHeaderByNumber(0).Time))
+	}
+
+	timestamps := make([]*big.Int, medianTimeBlocks)
+	numNodes := 0
+	limit := uint64(0)
+	if number >= medianTimeBlocks {
+		limit = number - medianTimeBlocks + 1
+	}
+
+	for i := number; i >= limit; i-- {
+		if parent != nil && i == number {
+			timestamps[numNodes] = big.NewInt(int64(parent.Time))
+		} else {
+			header := chain.GetHeaderByNumber(i)
+			timestamps[numNodes] = big.NewInt(int64(header.Time))
+		}
+		numNodes++
+		if i == 0 {
+			break
+		}
+	}
+
+	// Prune the slice to the actual number of available timestamps which
+	// will be fewer than desired near the beginning of the block chain
+	// and sort them.
+	timestamps = timestamps[:numNodes]
+	sort.Sort(BigIntSlice(timestamps))
+
+	medianTimestamp := timestamps[numNodes/2]
+	return medianTimestamp
+}
+
 // CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
 // that a new block should have when created at time given the parent block's time
 // and difficulty.
@@ -394,8 +437,8 @@ func calcDifficultyDigishieldV3(chain consensus.ChainHeaderReader, parentNumber,
 
 	// Limit adjustment step
 	// Use medians to prevent time-warp attacks
-	nLastBlockTime := chain.CalcPastMedianTime(parentNumber.Uint64(), parent)
-	nFirstBlockTime := chain.CalcPastMedianTime(nFirstBlock.Uint64(), parent)
+	nLastBlockTime := CalcPastMedianTime(chain, parentNumber.Uint64(), parent)
+	nFirstBlockTime := CalcPastMedianTime(chain, nFirstBlock.Uint64(), parent)
 	nActualTimespan := new(big.Int)
 	nActualTimespan.Sub(nLastBlockTime, nFirstBlockTime)
 	log.Debug(fmt.Sprintf("CalcDifficulty nActualTimespan = %v before dampening", nActualTimespan))
@@ -445,8 +488,8 @@ func calcDifficultyFlux(chain consensus.ChainHeaderReader, time, parentTime, par
 	diffTime := new(big.Int)
 	diffTime.Sub(time, parentTime)
 
-	nLastBlockTime := chain.CalcPastMedianTime(parentNumber.Uint64(), parent)
-	nFirstBlockTime := chain.CalcPastMedianTime(nFirstBlock.Uint64(), parent)
+	nLastBlockTime := CalcPastMedianTime(chain, parentNumber.Uint64(), parent)
+	nFirstBlockTime := CalcPastMedianTime(chain, nFirstBlock.Uint64(), parent)
 	nActualTimespan := new(big.Int)
 	nActualTimespan.Sub(nLastBlockTime, nFirstBlockTime)
 
@@ -670,3 +713,10 @@ func accumulateRewards(config *params.ChainConfig, state *state.StateDB, header 
 	// update block miner balance
 	state.AddBalance(header.Coinbase, currentReward)
 }
+
+// BigIntSlice attaches the methods of sort.Interface to []*big.Int, sorting in increasing order. (used by CalcPastMedianTime)
+type BigIntSlice []*big.Int
+
+func (s BigIntSlice) Len() int           { return len(s) }
+func (s BigIntSlice) Less(i, j int) bool { return s[i].Cmp(s[j]) < 0 }
+func (s BigIntSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
