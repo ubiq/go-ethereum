@@ -164,6 +164,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 			TrieDirtyDisabled:   config.NoPruning,
 			TrieTimeLimit:       config.TrieTimeout,
 			SnapshotLimit:       config.SnapshotCache,
+			Preimages:           config.Preimages,
 		}
 	)
 	eth.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, chainConfig, eth.engine, vmConfig, eth.shouldPreserve, &config.TxLookupLimit)
@@ -315,6 +316,10 @@ func (s *Ethereum) APIs() []rpc.API {
 			Namespace: "debug",
 			Version:   "1.0",
 			Service:   NewPrivateDebugAPI(s),
+		}, {
+			Namespace: "trace",
+			Version:   "1.0",
+			Service:   NewPrivateTraceAPI(s),
 		}, {
 			Namespace: "net",
 			Version:   "1.0",
